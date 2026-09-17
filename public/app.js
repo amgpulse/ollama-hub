@@ -11,7 +11,7 @@ let ollamaHost = localStorage.getItem('ollama_host') || 'http://127.0.0.1:11434'
 // DOM References
 const sidebar = document.getElementById('sidebar');
 const mobileOverlay = document.getElementById('mobile-overlay');
-const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
 const closeSidebarBtn = document.getElementById('close-sidebar-btn');
 const newChatBtn = document.getElementById('new-chat-btn');
 const hostUrlInput = document.getElementById('host-url-input');
@@ -48,15 +48,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   tempInput.value = localStorage.getItem('temperature') || '0.7';
   tempVal.textContent = tempInput.value;
 
+  // Set initial sidebar state based on screen size
+  const isMobile = window.innerWidth < 768;
+  if (isMobile) {
+    sidebar.classList.add('collapsed');
+    mobileOverlay.classList.add('hidden');
+  } else {
+    sidebar.classList.remove('collapsed');
+  }
+
   await verifyConnectionAndLoadModels();
 });
 
 // Event Listeners Setup
 function setupEventListeners() {
-  // Mobile drawer sidebar
-  mobileToggleBtn.addEventListener('click', toggleMobileSidebar);
-  closeSidebarBtn.addEventListener('click', toggleMobileSidebar);
-  mobileOverlay.addEventListener('click', toggleMobileSidebar);
+  // Collapsible sidebar
+  toggleSidebarBtn.addEventListener('click', toggleSidebar);
+  closeSidebarBtn.addEventListener('click', toggleSidebar);
+  mobileOverlay.addEventListener('click', toggleSidebar);
 
   // Clear current chat
   newChatBtn.addEventListener('click', clearCurrentChat);
@@ -116,12 +125,29 @@ function setupEventListeners() {
     const isDark = document.documentElement.classList.contains('dark');
     themeToggle.innerHTML = isDark ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>';
   });
+
+  // Handle window resize for overlay reset
+  window.addEventListener('resize', () => {
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) {
+      mobileOverlay.classList.add('hidden');
+    } else if (!sidebar.classList.contains('collapsed')) {
+      mobileOverlay.classList.remove('hidden');
+    }
+  });
 }
 
-// Mobile sidebar drawer
-function toggleMobileSidebar() {
-  sidebar.classList.toggle('-translate-x-full');
-  mobileOverlay.classList.toggle('hidden');
+// Toggle sidebar (collapsible on both desktop & mobile)
+function toggleSidebar() {
+  const isCollapsed = sidebar.classList.toggle('collapsed');
+  const isMobile = window.innerWidth < 768;
+  if (isMobile) {
+    if (isCollapsed) {
+      mobileOverlay.classList.add('hidden');
+    } else {
+      mobileOverlay.classList.remove('hidden');
+    }
+  }
 }
 
 // Custom Modal Alert displayer
@@ -202,8 +228,10 @@ function clearCurrentChat() {
   chatInput.style.height = 'auto';
   sendBtn.disabled = true;
   
-  if (!sidebar.classList.contains('-translate-x-full')) {
-    toggleMobileSidebar();
+  // Close sidebar on mobile if it's open
+  const isMobile = window.innerWidth < 768;
+  if (isMobile && !sidebar.classList.contains('collapsed')) {
+    toggleSidebar();
   }
 }
 
