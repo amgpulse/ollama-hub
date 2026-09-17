@@ -12,7 +12,6 @@ let ollamaHost = localStorage.getItem('ollama_host') || 'http://127.0.0.1:11434'
 const sidebar = document.getElementById('sidebar');
 const mobileOverlay = document.getElementById('mobile-overlay');
 const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
-const closeSidebarBtn = document.getElementById('close-sidebar-btn');
 const newChatBtn = document.getElementById('new-chat-btn');
 const hostUrlInput = document.getElementById('host-url-input');
 const testConnectionBtn = document.getElementById('test-connection-btn');
@@ -64,7 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setupEventListeners() {
   // Collapsible sidebar
   toggleSidebarBtn.addEventListener('click', toggleSidebar);
-  closeSidebarBtn.addEventListener('click', toggleSidebar);
   mobileOverlay.addEventListener('click', toggleSidebar);
 
   // Clear current chat
