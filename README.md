@@ -25,6 +25,23 @@
 
 The Node.js server serves the web interface, which connects directly from your browser to the Ollama host. It fetches the models installed there and sends chat requests to Ollama's `/api/chat` endpoint, displaying the streamed response as it arrives. Conversation history stays in browser memory and is not saved to disk.
 
+## 🧱 Project structure
+
+The browser application is split into native JavaScript modules, served directly by Express without a separate build step:
+
+```text
+src/
+├── components/   # Chat, settings, model selector, and message list
+├── services/     # Ollama API client
+├── utils/        # Formatting, validation, and browser storage helpers
+├── styles/       # Application CSS
+└── main.js       # Application entry point
+public/
+└── index.html    # Main page
+```
+
+Express serves `public/` for the page and `/src/` for the browser modules and stylesheet.
+
 ## 🧠 Supported Ollama models
 
 Ollama Hub works with any model installed on your Ollama host that supports Ollama's chat API. The model selector is populated automatically from that host, so you can use models such as `llama3`, `deepseek-r1`, and `mistral`—or any other compatible model you have pulled. For example:
