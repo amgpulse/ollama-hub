@@ -21,6 +21,20 @@
 
 **Ollama Hub** is a modern, distraction-free web chat dashboard designed to interface directly with your locally hosted [Ollama](https://ollama.com/) models. It runs entirely in your browser with **zero persistent disk storage** for chats—ensuring your conversations remain completely private and disappear the moment you refresh or clear the session.
 
+## ⚙️ How it works
+
+The Node.js server serves the web interface, which connects directly from your browser to the Ollama host. It fetches the models installed there and sends chat requests to Ollama's `/api/chat` endpoint, displaying the streamed response as it arrives. Conversation history stays in browser memory and is not saved to disk.
+
+## 🧠 Supported Ollama models
+
+Ollama Hub works with any model installed on your Ollama host that supports Ollama's chat API. The model selector is populated automatically from that host, so you can use models such as `llama3`, `deepseek-r1`, and `mistral`—or any other compatible model you have pulled. For example:
+
+```bash
+ollama pull llama3
+```
+
+Models must be available on the Ollama host configured in the sidebar. Model performance and hardware requirements depend on the model you choose.
+
 ---
 
 ## ✨ Key Features
@@ -77,7 +91,7 @@ Make sure you have the following installed on your system:
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/your-username/ollama-hub/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/amgpulse/ollama-hub/issues).
 
 ---
 
