@@ -7,6 +7,10 @@ export function initializeSettings(elements) {
   elements.hostUrlInput.value = host;
   elements.hostBadge.textContent = host;
 
+  const isDark = getSetting('theme', 'dark') !== 'light';
+  document.documentElement.classList.toggle('dark', isDark);
+  updateThemeToggle(elements.themeToggle, isDark);
+
   elements.systemPromptInput.value = getSetting('system_prompt');
   elements.tempInput.value = getSetting('temperature', '0.7');
   elements.tempVal.textContent = elements.tempInput.value;
@@ -50,11 +54,10 @@ export function setupSettings(elements, { onReconnect, onClearChat }) {
   });
 
   elements.themeToggle.addEventListener('click', () => {
-    document.documentElement.classList.toggle('dark');
-    const isDark = document.documentElement.classList.contains('dark');
-    elements.themeToggle.innerHTML = isDark
-      ? '<i class="fa-solid fa-moon"></i>'
-      : '<i class="fa-solid fa-sun"></i>';
+    const isDark = !document.documentElement.classList.contains('dark');
+    document.documentElement.classList.toggle('dark', isDark);
+    setSetting('theme', isDark ? 'dark' : 'light');
+    updateThemeToggle(elements.themeToggle, isDark);
   });
 
   window.addEventListener('resize', () => {
@@ -65,4 +68,13 @@ export function setupSettings(elements, { onReconnect, onClearChat }) {
       elements.mobileOverlay.classList.remove('hidden');
     }
   });
+}
+
+function updateThemeToggle(button, isDark) {
+  button.innerHTML = isDark
+    ? '<i class="fa-solid fa-moon"></i>'
+    : '<i class="fa-solid fa-sun"></i>';
+  button.title = `Switch to ${isDark ? 'light' : 'dark'} mode`;
+  button.setAttribute('aria-label', button.title);
+  button.setAttribute('aria-pressed', String(isDark));
 }
