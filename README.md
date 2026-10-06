@@ -89,20 +89,35 @@ Make sure you have the following installed on your system:
    npm install
    ```
 
-3. **Start the application:**
+3. **Create a local environment file (optional):**
+   ```bash
+   cp .env.example .env
+   ```
+
+4. **Start the application in development mode:**
+   ```bash
+   npm run dev
+   ```
+   or launch the production server:
    ```bash
    npm start
    ```
 
-4. **Open in your browser:**
+5. **Open in your browser:**
    Navigate to [http://localhost:3000](http://localhost:3000) and start chatting with your local AI!
 
 ---
 
 ## ⚙️ Configuration
 
-- **Ollama Host:** If Ollama runs on a different port or machine, you can change the server URL directly from the sidebar configuration panel.
+- **Environment defaults:** Set `PORT` and `OLLAMA_HOST` in a `.env` file to define the app port and default Ollama endpoint.
+  ```env
+  PORT=3000
+  OLLAMA_HOST=http://127.0.0.1:11434
+  ```
+- **Runtime override:** If Ollama runs on a different port or machine, you can change the server URL directly from the sidebar configuration panel.
 - **System Instructions:** Tailor the AI's behavior instantly using the system prompt input box.
+- **Health check:** The app exposes `/health` for lightweight availability monitoring and `/api/config` to retrieve the configured Ollama host.
 
 ---
 

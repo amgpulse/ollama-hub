@@ -2,7 +2,8 @@ import { getSetting, setSetting } from '../utils/storage.js';
 import { normalizeHost } from '../utils/validation.js';
 
 export function initializeSettings(elements) {
-  const host = getSetting('ollama_host', 'http://127.0.0.1:11434');
+  const configuredHost = window.__APP_CONFIG__?.ollamaHost || 'http://127.0.0.1:11434';
+  const host = getSetting('ollama_host', configuredHost);
   elements.hostUrlInput.value = host;
   elements.hostBadge.textContent = host;
 
