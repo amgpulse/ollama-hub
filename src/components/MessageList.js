@@ -148,28 +148,27 @@ export function createMessageList(container, emptyState, getActiveModel, showAle
     responseElement.parentElement.appendChild(copyControl);
   }
 
-  function addTokenCount(responseElement, tokenCount) {
-    if (!Number.isInteger(tokenCount) || tokenCount < 0) return;
-
+  function addOutputMetrics(responseElement) {
     const metadata = document.createElement('div');
-    metadata.className = 'mt-2 text-xs text-slate-500';
-    metadata.textContent = `Output tokens: ${tokenCount}`;
+    metadata.className = 'mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500';
+    const speed = document.createElement('span');
+    const count = document.createElement('span');
+    speed.textContent = 'Average output speed: waiting for tokens...';
+    count.textContent = 'Output tokens: waiting...';
+    metadata.append(speed, count);
     responseElement.parentElement.appendChild(metadata);
+    return { speed, count };
   }
 
-  function addTokenRate(responseElement) {
-    const metadata = document.createElement('div');
-    metadata.className = 'mt-1 text-xs text-slate-500';
-    metadata.textContent = 'Average output speed: waiting for tokens...';
-    responseElement.parentElement.appendChild(metadata);
-    return metadata;
-  }
-
-  function updateTokenRate(metadata, tokensPerSecond, isEstimated) {
-    if (!Number.isFinite(tokensPerSecond) || tokensPerSecond < 0) return;
-
-    const estimateLabel = isEstimated ? ' (estimated)' : '';
-    metadata.textContent = `Average output speed: ${tokensPerSecond.toFixed(1)} tokens/s${estimateLabel}`;
+  function updateOutputMetrics(metrics, tokensPerSecond, tokenCount, isEstimated) {
+    if (Number.isFinite(tokensPerSecond) && tokensPerSecond >= 0) {
+      const estimateLabel = isEstimated ? ' (estimated)' : '';
+      metrics.speed.textContent = `Average output speed: ${tokensPerSecond.toFixed(1)} tokens/s${estimateLabel}`;
+    }
+    if (Number.isInteger(tokenCount) && tokenCount >= 0) {
+      const estimatePrefix = isEstimated ? '~' : '';
+      metrics.count.textContent = `Output tokens: ${estimatePrefix}${tokenCount}`;
+    }
   }
 
   function scrollToBottom() {
@@ -182,9 +181,8 @@ export function createMessageList(container, emptyState, getActiveModel, showAle
   return {
     append,
     addCopyButton,
-    addTokenCount,
-    addTokenRate,
-    updateTokenRate,
+    addOutputMetrics,
+    updateOutputMetrics,
     clear,
     scrollToBottom
   };

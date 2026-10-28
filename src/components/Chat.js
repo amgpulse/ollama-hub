@@ -53,11 +53,10 @@ export function createChat({
     isGenerating = true;
     elements.stopGenerationContainer.classList.remove('hidden');
     const responseElement = messageList.append('assistant', '', true);
-    const tokenRateElement = messageList.addTokenRate(responseElement);
+    const outputMetrics = messageList.addOutputMetrics(responseElement);
 
     abortController = new AbortController();
     let assistantResponse = '';
-    let outputTokenCount = null;
     let generationStartedAt = null;
 
     const currentSystemPrompt = elements.systemPromptInput.value.trim();
@@ -79,27 +78,31 @@ export function createChat({
           const elapsedSeconds = (performance.now() - generationStartedAt) / 1000;
           if (elapsedSeconds > 0) {
             const estimatedTokenCount = Math.ceil(assistantResponse.length / 4);
-            messageList.updateTokenRate(tokenRateElement, estimatedTokenCount / elapsedSeconds, true);
+            messageList.updateOutputMetrics(
+              outputMetrics,
+              estimatedTokenCount / elapsedSeconds,
+              estimatedTokenCount,
+              true
+            );
           }
           messageList.scrollToBottom();
         }
       });
 
-      outputTokenCount = result.evalCount;
       if (
         Number.isInteger(result.evalCount) &&
         Number.isFinite(result.evalDuration) &&
         result.evalDuration > 0
       ) {
-        messageList.updateTokenRate(
-          tokenRateElement,
+        messageList.updateOutputMetrics(
+          outputMetrics,
           result.evalCount / (result.evalDuration / 1_000_000_000),
+          result.evalCount,
           false
         );
       }
       messages.push({ role: 'assistant', content: assistantResponse });
       messageList.addCopyButton(responseElement, assistantResponse);
-      messageList.addTokenCount(responseElement, outputTokenCount);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Stream generation aborted by user.');
