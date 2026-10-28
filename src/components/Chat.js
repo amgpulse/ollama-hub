@@ -56,6 +56,7 @@ export function createChat({
 
     abortController = new AbortController();
     let assistantResponse = '';
+    let outputTokenCount = null;
 
     const currentSystemPrompt = elements.systemPromptInput.value.trim();
     const requestMessages = currentSystemPrompt
@@ -63,7 +64,7 @@ export function createChat({
       : [...messages];
 
     try {
-      await streamChat({
+      const result = await streamChat({
         host: getHost(),
         model: activeModel,
         messages: requestMessages,
@@ -76,8 +77,10 @@ export function createChat({
         }
       });
 
+      outputTokenCount = result.evalCount;
       messages.push({ role: 'assistant', content: assistantResponse });
       messageList.addCopyButton(responseElement, assistantResponse);
+      messageList.addTokenCount(responseElement, outputTokenCount);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Stream generation aborted by user.');

@@ -148,6 +148,15 @@ export function createMessageList(container, emptyState, getActiveModel, showAle
     responseElement.parentElement.appendChild(copyControl);
   }
 
+  function addTokenCount(responseElement, tokenCount) {
+    if (!Number.isInteger(tokenCount) || tokenCount < 0) return;
+
+    const metadata = document.createElement('div');
+    metadata.className = 'mt-2 text-xs text-slate-500';
+    metadata.textContent = `Output tokens: ${tokenCount}`;
+    responseElement.parentElement.appendChild(metadata);
+  }
+
   function scrollToBottom() {
     container.scrollTo({
       top: container.scrollHeight,
@@ -155,5 +164,5 @@ export function createMessageList(container, emptyState, getActiveModel, showAle
     });
   }
 
-  return { append, addCopyButton, clear, scrollToBottom };
+  return { append, addCopyButton, addTokenCount, clear, scrollToBottom };
 }

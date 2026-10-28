@@ -57,6 +57,7 @@ Models must be available on the Ollama host configured in the sidebar. Model per
 ## ✨ Key Features
 
 - **⚡ Real-time Streaming:** Smooth, instant token streaming with a typing indicator and stop generation control.
+- **📊 Output Token Count:** Shows the number of generated output tokens when provided by Ollama.
 - **🔒 Purely In-Memory (No Logs):** Chat histories are never written to disk or uploaded anywhere. Privacy first.
 - **🧠 Dynamic Model Switcher:** Automatically detects and lets you switch between all locally installed Ollama models (`llama3`, `deepseek-r1`, `mistral`, etc.).
 - **🎨 Markdown & Syntax Highlighting:** Rich markdown rendering with automatic code block syntax highlighting and one-click **Copy** buttons.
