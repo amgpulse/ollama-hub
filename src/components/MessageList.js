@@ -157,6 +157,21 @@ export function createMessageList(container, emptyState, getActiveModel, showAle
     responseElement.parentElement.appendChild(metadata);
   }
 
+  function addTokenRate(responseElement) {
+    const metadata = document.createElement('div');
+    metadata.className = 'mt-1 text-xs text-slate-500';
+    metadata.textContent = 'Average output speed: waiting for tokens...';
+    responseElement.parentElement.appendChild(metadata);
+    return metadata;
+  }
+
+  function updateTokenRate(metadata, tokensPerSecond, isEstimated) {
+    if (!Number.isFinite(tokensPerSecond) || tokensPerSecond < 0) return;
+
+    const estimateLabel = isEstimated ? ' (estimated)' : '';
+    metadata.textContent = `Average output speed: ${tokensPerSecond.toFixed(1)} tokens/s${estimateLabel}`;
+  }
+
   function scrollToBottom() {
     container.scrollTo({
       top: container.scrollHeight,
@@ -164,5 +179,13 @@ export function createMessageList(container, emptyState, getActiveModel, showAle
     });
   }
 
-  return { append, addCopyButton, addTokenCount, clear, scrollToBottom };
+  return {
+    append,
+    addCopyButton,
+    addTokenCount,
+    addTokenRate,
+    updateTokenRate,
+    clear,
+    scrollToBottom
+  };
 }

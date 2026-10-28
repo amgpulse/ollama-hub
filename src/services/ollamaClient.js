@@ -42,6 +42,7 @@ export async function streamChat({
   const decoder = new TextDecoder('utf-8');
   let partialLine = '';
   let evalCount = null;
+  let evalDuration = null;
 
   const processLine = (line) => {
     if (!line.trim()) return;
@@ -53,6 +54,9 @@ export async function streamChat({
       }
       if (parsed.done && Number.isInteger(parsed.eval_count)) {
         evalCount = parsed.eval_count;
+      }
+      if (parsed.done && Number.isFinite(parsed.eval_duration)) {
+        evalDuration = parsed.eval_duration;
       }
     } catch (error) {
       console.warn('NDJSON Parse warning:', line, error);
@@ -73,5 +77,5 @@ export async function streamChat({
     }
   }
 
-  return { evalCount };
+  return { evalCount, evalDuration };
 }
