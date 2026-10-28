@@ -77,11 +77,13 @@ export function createChat({
       });
 
       messages.push({ role: 'assistant', content: assistantResponse });
+      messageList.addCopyButton(responseElement, assistantResponse);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Stream generation aborted by user.');
         if (assistantResponse.trim()) {
           messages.push({ role: 'assistant', content: `${assistantResponse} [Generation stopped by user]` });
+          messageList.addCopyButton(responseElement, assistantResponse);
         }
       } else {
         console.error(error);

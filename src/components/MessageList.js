@@ -1,6 +1,6 @@
 import { renderMarkdownAndHighlight } from '../utils/formatting.js';
 
-export function createMessageList(container, emptyState, getActiveModel) {
+export function createMessageList(container, emptyState, getActiveModel, showAlert) {
   function append(role, content, isStreaming = false) {
     const isUser = role === 'user';
     const wrapper = document.createElement('div');
@@ -46,6 +46,32 @@ export function createMessageList(container, emptyState, getActiveModel) {
     container.replaceChildren(emptyState);
   }
 
+  function addCopyButton(responseElement, content) {
+    if (!content.trim()) return;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className =
+      'mt-2 px-2 py-1 rounded text-[10px] flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-1 focus:ring-brand-500';
+    button.setAttribute('aria-label', 'Copy response');
+    button.innerHTML = '<i class="fa-regular fa-copy"></i><span>Copy response</span>';
+
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(content);
+        button.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i><span>Copied!</span>';
+        setTimeout(() => {
+          button.innerHTML = '<i class="fa-regular fa-copy"></i><span>Copy response</span>';
+        }, 2000);
+      } catch (error) {
+        console.error('Unable to copy response:', error);
+        showAlert('Copy Failed', 'Unable to copy the response to the clipboard.');
+      }
+    });
+
+    responseElement.parentElement.appendChild(button);
+  }
+
   function scrollToBottom() {
     container.scrollTo({
       top: container.scrollHeight,
@@ -53,5 +79,5 @@ export function createMessageList(container, emptyState, getActiveModel) {
     });
   }
 
-  return { append, clear, scrollToBottom };
+  return { append, addCopyButton, clear, scrollToBottom };
 }

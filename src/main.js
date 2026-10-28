@@ -46,7 +46,8 @@ function showAlert(title, message) {
 const messageList = createMessageList(
   elements.chatMessagesContainer,
   elements.emptyState,
-  () => activeModel
+  () => activeModel,
+  showAlert
 );
 
 const chat = createChat({
