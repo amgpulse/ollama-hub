@@ -52,16 +52,19 @@ export function createMessageList(container, emptyState, getActiveModel, showAle
     const button = document.createElement('button');
     button.type = 'button';
     button.className =
-      'mt-2 px-2 py-1 rounded text-[10px] flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-1 focus:ring-brand-500';
+      'mt-2 p-2 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-1 focus:ring-brand-500';
     button.setAttribute('aria-label', 'Copy response');
-    button.innerHTML = '<i class="fa-regular fa-copy"></i><span>Copy response</span>';
+    button.title = 'Copy response';
+    button.innerHTML = '<i class="fa-regular fa-copy"></i>';
 
     button.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(content);
-        button.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i><span>Copied!</span>';
+        button.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i>';
+        button.title = 'Copied!';
         setTimeout(() => {
-          button.innerHTML = '<i class="fa-regular fa-copy"></i><span>Copy response</span>';
+          button.innerHTML = '<i class="fa-regular fa-copy"></i>';
+          button.title = 'Copy response';
         }, 2000);
       } catch (error) {
         console.error('Unable to copy response:', error);
