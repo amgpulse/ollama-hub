@@ -12,10 +12,17 @@ const indexFilePath = path.join(publicDir, 'index.html');
 const app = express();
 const PORT = Number.parseInt(process.env.PORT ?? '3000', 10);
 const DEFAULT_OLLAMA_HOST = (process.env.OLLAMA_HOST || 'http://127.0.0.1:11434').trim();
+const DEFAULT_LLAMA_CPP_HOST = (process.env.LLAMA_CPP_HOST || 'http://127.0.0.1:8080').trim();
 
 const renderIndex = () => {
   const template = fs.readFileSync(indexFilePath, 'utf8');
-  return template.replace('__OLLAMA_HUB_CONFIG_PLACEHOLDER__', JSON.stringify({ ollamaHost: DEFAULT_OLLAMA_HOST }));
+  return template.replace(
+    '__OLLAMA_HUB_CONFIG_PLACEHOLDER__',
+    JSON.stringify({
+      ollamaHost: DEFAULT_OLLAMA_HOST,
+      llamaCppHost: DEFAULT_LLAMA_CPP_HOST
+    })
+  );
 };
 
 app.disable('x-powered-by');
@@ -30,13 +37,17 @@ app.get('/health', (_req, res) => {
     name: 'ollama-hub',
     port: PORT,
     ollamaHost: DEFAULT_OLLAMA_HOST,
+    llamaCppHost: DEFAULT_LLAMA_CPP_HOST,
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
 });
 
 app.get('/api/config', (_req, res) => {
-  res.json({ ollamaHost: DEFAULT_OLLAMA_HOST });
+  res.json({
+    ollamaHost: DEFAULT_OLLAMA_HOST,
+    llamaCppHost: DEFAULT_LLAMA_CPP_HOST
+  });
 });
 
 // Catch-all route to serve index.html for Single Page Application.
@@ -49,5 +60,6 @@ app.listen(PORT, () => {
   console.log('Ollama Hub is running!');
   console.log(`Open: http://localhost:${PORT}`);
   console.log(`Default Ollama host: ${DEFAULT_OLLAMA_HOST}`);
+  console.log(`Default llama.cpp host: ${DEFAULT_LLAMA_CPP_HOST}`);
   console.log('=========================================');
 });

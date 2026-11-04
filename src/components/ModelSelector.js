@@ -4,8 +4,14 @@ export function renderModelsDropdown(models, select, activeModel) {
     return;
   }
 
-  select.innerHTML = models.map((model) => {
-    const sizeGB = (model.size / (1024 * 1024 * 1024)).toFixed(1);
-    return `<option value="${model.name}" ${model.name === activeModel ? 'selected' : ''}>${model.name} (${sizeGB} GB)</option>`;
-  }).join('');
+  const options = models.map((model) => {
+    const option = document.createElement('option');
+    option.value = model.name;
+    option.textContent = Number.isFinite(model.size) && model.size > 0
+      ? `${model.name} (${(model.size / (1024 * 1024 * 1024)).toFixed(1)} GB)`
+      : model.name;
+    option.selected = model.name === activeModel;
+    return option;
+  });
+  select.replaceChildren(...options);
 }

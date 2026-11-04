@@ -3,13 +3,17 @@ import { createMessageList } from './components/MessageList.js';
 import { renderModelsDropdown } from './components/ModelSelector.js';
 import { initializeSettings, setupSettings } from './components/Settings.js';
 import { getModels } from './services/ollamaClient.js';
+import { getModels as getLlamaCppModels } from './services/llamaCppClient.js';
 
 const elements = {
   sidebar: document.getElementById('sidebar'),
   mobileOverlay: document.getElementById('mobile-overlay'),
   toggleSidebarBtn: document.getElementById('toggle-sidebar-btn'),
   newChatBtn: document.getElementById('new-chat-btn'),
+  providerSelect: document.getElementById('provider-select'),
   hostUrlInput: document.getElementById('host-url-input'),
+  hostUrlLabel: document.getElementById('host-url-label'),
+  modelSourceHint: document.getElementById('model-source-hint'),
   testConnectionBtn: document.getElementById('test-connection-btn'),
   testStatusIcon: document.getElementById('test-status-icon'),
   themeToggle: document.getElementById('theme-toggle'),
@@ -33,7 +37,9 @@ const elements = {
   ollamaStatusText: document.getElementById('ollama-status-text')
 };
 
-let ollamaHost = initializeSettings(elements);
+const initialConnection = initializeSettings(elements);
+let provider = initialConnection.provider;
+let host = initialConnection.host;
 let models = [];
 let activeModel = '';
 
@@ -53,23 +59,25 @@ const messageList = createMessageList(
 const chat = createChat({
   elements,
   messageList,
-  getHost: () => ollamaHost,
+  getHost: () => host,
+  getProvider: () => provider,
   getActiveModel: () => activeModel,
   showAlert
 });
 
-async function verifyConnectionAndLoadModels(host) {
+async function verifyConnectionAndLoadModels(connectionProvider, connectionHost) {
   elements.ollamaStatusDot.className = 'inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse';
   elements.ollamaStatusText.textContent = 'Connecting...';
   elements.testStatusIcon.className = 'fa-solid fa-spinner animate-spin';
   elements.testConnectionBtn.disabled = true;
 
   try {
-    models = await getModels(host);
+    const fetchModels = connectionProvider === 'llama.cpp' ? getLlamaCppModels : getModels;
+    models = await fetchModels(connectionHost);
     renderModelsDropdown(models, elements.modelSelect, activeModel);
 
     elements.ollamaStatusDot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
-    elements.ollamaStatusText.textContent = 'Connected to Ollama';
+    elements.ollamaStatusText.textContent = `Connected to ${connectionProvider}`;
     elements.testStatusIcon.className = 'fa-solid fa-circle-check text-emerald-400';
 
     if (models.length > 0) {
@@ -82,20 +90,22 @@ async function verifyConnectionAndLoadModels(host) {
       elements.activeModelTitle.textContent = 'No models loaded';
       showAlert(
         'No Models Found',
-        'Your Ollama system is online, but no AI models are installed. Please run "ollama pull llama3" or "ollama pull deepseek-r1" in your terminal to fetch a model.'
+        connectionProvider === 'llama.cpp'
+          ? 'Your llama.cpp server is online, but it did not report any models. Check that the server was started with a model loaded.'
+          : 'Your Ollama system is online, but no AI models are installed. Please run "ollama pull llama3" or "ollama pull deepseek-r1" in your terminal to fetch a model.'
       );
     }
   } catch (error) {
-    console.error('Ollama connect failed:', error);
+    console.error(`${connectionProvider} connect failed:`, error);
     elements.ollamaStatusDot.className = 'inline-block w-2 h-2 rounded-full bg-rose-500';
     elements.ollamaStatusText.textContent = 'Offline / Connection Error';
     elements.testStatusIcon.className = 'fa-solid fa-triangle-exclamation text-rose-400';
-    elements.modelSelect.innerHTML = '<option value="">Ollama is offline</option>';
-    elements.activeModelTitle.textContent = 'Ollama Unreachable';
+    elements.modelSelect.innerHTML = `<option value="">${connectionProvider} is offline</option>`;
+    elements.activeModelTitle.textContent = `${connectionProvider} Unreachable`;
 
     showAlert(
-      'Ollama Connection Error',
-      `Unable to connect to Ollama server at ${host}.\n\n1. Make sure Ollama application is active and running.\n2. Verify the host address.\n3. If Ollama runs on another device, check network permissions.`
+      `${connectionProvider} Connection Error`,
+      `Unable to connect to ${connectionProvider} server at ${connectionHost}.\n\n1. Make sure the server is active and running.\n2. Verify the host address.\n3. If the server runs on another device, check network permissions and CORS settings.`
     );
   } finally {
     elements.testConnectionBtn.disabled = false;
@@ -116,11 +126,13 @@ document.querySelectorAll('[data-suggestion]').forEach((button) => {
 });
 
 setupSettings(elements, {
-  onReconnect: async (host) => {
-    ollamaHost = host;
-    await verifyConnectionAndLoadModels(host);
+  onReconnect: async (nextProvider, nextHost) => {
+    provider = nextProvider;
+    host = nextHost;
+    activeModel = '';
+    await verifyConnectionAndLoadModels(nextProvider, nextHost);
   },
   onClearChat: chat.clearCurrentChat
 });
 
-await verifyConnectionAndLoadModels(ollamaHost);
+await verifyConnectionAndLoadModels(provider, host);

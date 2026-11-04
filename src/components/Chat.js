@@ -1,10 +1,12 @@
-import { streamChat } from '../services/ollamaClient.js';
+import { streamChat as streamOllamaChat } from '../services/ollamaClient.js';
+import { streamChat as streamLlamaCppChat } from '../services/llamaCppClient.js';
 import { renderMarkdownAndHighlight } from '../utils/formatting.js';
 
 export function createChat({
   elements,
   messageList,
   getHost,
+  getProvider,
   getActiveModel,
   showAlert
 }) {
@@ -65,6 +67,7 @@ export function createChat({
       : [...messages];
 
     try {
+      const streamChat = getProvider() === 'llama.cpp' ? streamLlamaCppChat : streamOllamaChat;
       const result = await streamChat({
         host: getHost(),
         model: activeModel,
@@ -89,17 +92,11 @@ export function createChat({
         }
       });
 
-      if (
-        Number.isInteger(result.evalCount) &&
-        Number.isFinite(result.evalDuration) &&
-        result.evalDuration > 0
-      ) {
-        messageList.updateOutputMetrics(
-          outputMetrics,
-          result.evalCount / (result.evalDuration / 1_000_000_000),
-          result.evalCount,
-          false
-        );
+      if (Number.isInteger(result.evalCount)) {
+        const tokensPerSecond = Number.isFinite(result.evalDuration) && result.evalDuration > 0
+          ? result.evalCount / (result.evalDuration / 1_000_000_000)
+          : Number.NaN;
+        messageList.updateOutputMetrics(outputMetrics, tokensPerSecond, result.evalCount, false);
       }
       messages.push({ role: 'assistant', content: assistantResponse });
       messageList.addCopyButton(responseElement, assistantResponse);
@@ -112,7 +109,8 @@ export function createChat({
         }
       } else {
         console.error(error);
-        responseElement.innerHTML = `<span class="text-rose-500 font-bold flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Error communicating with Ollama: ${error.message}</span>`;
+        responseElement.textContent = `Error communicating with ${getProvider()}: ${error.message}`;
+        responseElement.classList.add('text-rose-500', 'font-bold');
         messages.push({ role: 'assistant', content: `Error: ${error.message}` });
       }
     } finally {

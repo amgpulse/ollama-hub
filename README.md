@@ -19,11 +19,11 @@
 
 ## 🚀 Overview
 
-**Ollama Hub** is a modern, distraction-free web chat dashboard designed to interface directly with your locally hosted [Ollama](https://ollama.com/) models. It runs entirely in your browser with **zero persistent disk storage** for chats—ensuring your conversations remain completely private and disappear the moment you refresh or clear the session.
+**Ollama Hub** is a modern, distraction-free web chat dashboard designed to interface directly with locally hosted [Ollama](https://ollama.com/) and [llama.cpp](https://github.com/ggml-org/llama.cpp) models. It runs entirely in your browser with **zero persistent disk storage** for chats—ensuring your conversations remain completely private and disappear the moment you refresh or clear the session.
 
 ## ⚙️ How it works
 
-The Node.js server serves the web interface, which connects directly from your browser to the Ollama host. It fetches the models installed there and sends chat requests to Ollama's `/api/chat` endpoint, displaying the streamed response as it arrives. Conversation history stays in browser memory and is not saved to disk.
+The Node.js server serves the web interface, which connects directly from your browser to the selected inference server. Ollama uses `/api/tags` and `/api/chat`; llama.cpp uses its OpenAI-compatible `/v1/models` and streaming `/v1/chat/completions` endpoints. Conversation history stays in browser memory and is not saved to disk.
 
 ## 🧱 Project structure
 
@@ -42,15 +42,23 @@ public/
 
 Express serves `public/` for the page and `/src/` for the browser modules and stylesheet.
 
-## 🧠 Supported Ollama models
+## 🧠 Supported models and runtimes
 
-Ollama Hub works with any model installed on your Ollama host that supports Ollama's chat API. The model selector is populated automatically from that host, so you can use models such as `llama3`, `deepseek-r1`, and `mistral`—or any other compatible model you have pulled. For example:
+Choose **Ollama** or **llama.cpp** in Connection Settings. Ollama Hub automatically populates the model selector from the selected server.
+
+For Ollama, any model available on the configured host is supported:
 
 ```bash
 ollama pull llama3
 ```
 
-Models must be available on the Ollama host configured in the sidebar. Model performance and hardware requirements depend on the model you choose.
+For llama.cpp, start `llama-server` with a model loaded (the default server port is `8080`), for example:
+
+```bash
+llama-server -m /path/to/model.gguf --host 0.0.0.0 --port 8080
+```
+
+Set the host in the sidebar to the llama.cpp server URL (for example `http://127.0.0.1:8080`). The client appends `/v1` automatically; a URL already ending in `/v1` also works. Since requests are made directly by the browser, remote servers must allow browser CORS requests.
 
 ---
 
@@ -70,7 +78,7 @@ Models must be available on the Ollama host configured in the sidebar. Model per
 
 Make sure you have the following installed on your system:
 1. **Node.js** (v18 or higher)
-2. **Ollama** running locally (`http://localhost:11434`) with at least one model pulled:
+2. At least one supported runtime: Ollama running locally (`http://localhost:11434`) with a model pulled, or a llama.cpp `llama-server` running locally (`http://localhost:8080`).
    ```bash
    ollama pull llama3
    ```
@@ -111,14 +119,15 @@ Make sure you have the following installed on your system:
 
 ## ⚙️ Configuration
 
-- **Environment defaults:** Set `PORT` and `OLLAMA_HOST` in a `.env` file to define the app port and default Ollama endpoint.
+- **Environment defaults:** Set `PORT`, `OLLAMA_HOST`, and `LLAMA_CPP_HOST` in a `.env` file to configure the app port and default runtime endpoints.
   ```env
   PORT=3000
   OLLAMA_HOST=http://127.0.0.1:11434
+  LLAMA_CPP_HOST=http://127.0.0.1:8080
   ```
-- **Runtime override:** If Ollama runs on a different port or machine, you can change the server URL directly from the sidebar configuration panel.
+- **Runtime override:** Choose a runtime and change its server URL directly from the sidebar configuration panel.
 - **System Instructions:** Tailor the AI's behavior instantly using the system prompt input box.
-- **Health check:** The app exposes `/health` for lightweight availability monitoring and `/api/config` to retrieve the configured Ollama host.
+- **Health check:** The app exposes `/health` for lightweight availability monitoring and `/api/config` to retrieve the configured runtime hosts.
 
 ---
 

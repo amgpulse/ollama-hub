@@ -2,10 +2,15 @@ import { getSetting, setSetting } from '../utils/storage.js';
 import { normalizeHost } from '../utils/validation.js';
 
 export function initializeSettings(elements) {
-  const configuredHost = window.__APP_CONFIG__?.ollamaHost || 'http://127.0.0.1:11434';
-  const host = getSetting('ollama_host', configuredHost);
+  const provider = getSetting('provider', 'ollama') === 'llama.cpp' ? 'llama.cpp' : 'ollama';
+  const configuredHost = provider === 'llama.cpp'
+    ? window.__APP_CONFIG__?.llamaCppHost || 'http://127.0.0.1:8080'
+    : window.__APP_CONFIG__?.ollamaHost || 'http://127.0.0.1:11434';
+  const host = getSetting(`${provider}_host`, configuredHost);
+  elements.providerSelect.value = provider;
   elements.hostUrlInput.value = host;
   elements.hostBadge.textContent = host;
+  updateProviderLabels(elements, provider);
 
   const isDark = getSetting('theme', 'dark') !== 'light';
   document.documentElement.classList.toggle('dark', isDark);
@@ -21,10 +26,12 @@ export function initializeSettings(elements) {
     elements.mobileOverlay.classList.add('hidden');
   }
 
-  return host;
+  return { provider, host };
 }
 
 export function setupSettings(elements, { onReconnect, onClearChat }) {
+  let provider = elements.providerSelect.value;
+
   const toggleSidebar = () => {
     const isCollapsed = elements.sidebar.classList.toggle('collapsed');
     if (window.innerWidth < 768) {
@@ -36,13 +43,26 @@ export function setupSettings(elements, { onReconnect, onClearChat }) {
   elements.mobileOverlay.addEventListener('click', toggleSidebar);
   elements.newChatBtn.addEventListener('click', onClearChat);
 
+  elements.providerSelect.addEventListener('change', async () => {
+    provider = elements.providerSelect.value;
+    setSetting('provider', provider);
+    const configuredHost = provider === 'llama.cpp'
+      ? window.__APP_CONFIG__?.llamaCppHost || 'http://127.0.0.1:8080'
+      : window.__APP_CONFIG__?.ollamaHost || 'http://127.0.0.1:11434';
+    const host = getSetting(`${provider}_host`, configuredHost);
+    elements.hostUrlInput.value = host;
+    elements.hostBadge.textContent = host;
+    updateProviderLabels(elements, provider);
+    await onReconnect(provider, host);
+  });
+
   elements.testConnectionBtn.addEventListener('click', async () => {
     const host = normalizeHost(elements.hostUrlInput.value);
     if (!host) return;
 
-    setSetting('ollama_host', host);
+    setSetting(`${provider}_host`, host);
     elements.hostBadge.textContent = host;
-    await onReconnect(host);
+    await onReconnect(provider, host);
   });
 
   elements.systemPromptInput.addEventListener('input', (event) => {
@@ -68,6 +88,17 @@ export function setupSettings(elements, { onReconnect, onClearChat }) {
       elements.mobileOverlay.classList.remove('hidden');
     }
   });
+}
+
+function updateProviderLabels(elements, provider) {
+  const isLlamaCpp = provider === 'llama.cpp';
+  elements.hostUrlLabel.textContent = `${isLlamaCpp ? 'llama.cpp' : 'Ollama'} Server Host:`;
+  elements.hostUrlInput.placeholder = isLlamaCpp
+    ? 'http://127.0.0.1:8080'
+    : 'http://127.0.0.1:11434';
+  elements.modelSourceHint.textContent = isLlamaCpp
+    ? 'Models are fetched from your llama.cpp server. Start it with the OpenAI-compatible API enabled.'
+    : 'Models are fetched directly from your local Ollama daemon. Pull models using ollama pull <model> in your command line.';
 }
 
 function updateThemeToggle(button, isDark) {
