@@ -2,6 +2,13 @@ import { streamChat as streamOllamaChat } from '../services/ollamaClient.js';
 import { streamChat as streamLlamaCppChat } from '../services/llamaCppClient.js';
 import { renderMarkdownAndHighlight } from '../utils/formatting.js';
 
+const requestFrame = typeof requestAnimationFrame === 'function'
+  ? requestAnimationFrame
+  : (cb) => setTimeout(cb, 16);
+const cancelFrame = typeof cancelAnimationFrame === 'function'
+  ? cancelAnimationFrame
+  : (id) => clearTimeout(id);
+
 export function createChat({
   elements,
   messageList,
@@ -17,6 +24,10 @@ export function createChat({
   function clearCurrentChat() {
     if (messages.length === 0) return;
     if (!confirm('Are you sure you want to clear this active chat session? History will not be saved.')) return;
+
+    if (isGenerating && abortController) {
+      abortController.abort();
+    }
 
     messages = [];
     messageList.clear();
@@ -66,6 +77,64 @@ export function createChat({
       ? [{ role: 'system', content: currentSystemPrompt }, ...messages]
       : [...messages];
 
+    const RENDER_INTERVAL_MS = 60;
+    let renderTimer = null;
+    let lastRenderTime = 0;
+
+    function renderStreamFrame(isFinal = false) {
+      if (renderTimer) {
+        cancelFrame(renderTimer);
+        renderTimer = null;
+      }
+      lastRenderTime = performance.now();
+      renderMarkdownAndHighlight(assistantResponse, responseElement, {
+        highlightCode: isFinal
+      });
+
+      if (generationStartedAt) {
+        const elapsedSeconds = (performance.now() - generationStartedAt) / 1000;
+        if (elapsedSeconds > 0) {
+          const estimatedTokenCount = Math.ceil(assistantResponse.length / 4);
+          messageList.updateOutputMetrics(
+            outputMetrics,
+            estimatedTokenCount / elapsedSeconds,
+            estimatedTokenCount,
+            true
+          );
+        }
+      }
+      messageList.scrollToBottom();
+    }
+
+    function scheduleStreamRender() {
+      const now = performance.now();
+      if (now - lastRenderTime >= RENDER_INTERVAL_MS) {
+        renderStreamFrame(false);
+      } else if (!renderTimer) {
+        renderTimer = requestFrame(() => {
+          renderTimer = null;
+          renderStreamFrame(false);
+        });
+      }
+    }
+
+    function flushStreamRender(isFinal = true) {
+      if (renderTimer) {
+        cancelFrame(renderTimer);
+        renderTimer = null;
+      }
+      if (assistantResponse) {
+        renderStreamFrame(isFinal);
+      }
+    }
+
+    function cancelStreamRender() {
+      if (renderTimer) {
+        cancelFrame(renderTimer);
+        renderTimer = null;
+      }
+    }
+
     try {
       const streamChat = getProvider() === 'llama.cpp' ? streamLlamaCppChat : streamOllamaChat;
       const result = await streamChat({
@@ -77,20 +146,11 @@ export function createChat({
         onToken: (token) => {
           generationStartedAt ??= performance.now();
           assistantResponse += token;
-          renderMarkdownAndHighlight(assistantResponse, responseElement);
-          const elapsedSeconds = (performance.now() - generationStartedAt) / 1000;
-          if (elapsedSeconds > 0) {
-            const estimatedTokenCount = Math.ceil(assistantResponse.length / 4);
-            messageList.updateOutputMetrics(
-              outputMetrics,
-              estimatedTokenCount / elapsedSeconds,
-              estimatedTokenCount,
-              true
-            );
-          }
-          messageList.scrollToBottom();
+          scheduleStreamRender();
         }
       });
+
+      flushStreamRender(true);
 
       if (Number.isInteger(result.evalCount)) {
         const tokensPerSecond = Number.isFinite(result.evalDuration) && result.evalDuration > 0
@@ -103,17 +163,20 @@ export function createChat({
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Stream generation aborted by user.');
+        flushStreamRender(true);
         if (assistantResponse.trim()) {
           messages.push({ role: 'assistant', content: `${assistantResponse} [Generation stopped by user]` });
           messageList.addCopyButton(responseElement, assistantResponse);
         }
       } else {
+        cancelStreamRender();
         console.error(error);
         responseElement.textContent = `Error communicating with ${getProvider()}: ${error.message}`;
         responseElement.classList.add('text-rose-500', 'font-bold');
         messages.push({ role: 'assistant', content: `Error: ${error.message}` });
       }
     } finally {
+      cancelStreamRender();
       isGenerating = false;
       responseElement.classList.remove('typing-cursor');
       elements.stopGenerationContainer.classList.add('hidden');

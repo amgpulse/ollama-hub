@@ -1,10 +1,20 @@
-export function renderMarkdownAndHighlight(text, container) {
+export function renderMarkdownAndHighlight(text, container, options = {}) {
+  const { highlightCode = true } = options;
+
   if (!text) {
     container.innerHTML = '';
     return;
   }
 
-  container.innerHTML = marked.parse(text);
+  if (typeof marked !== 'undefined') {
+    container.innerHTML = marked.parse(text);
+  } else {
+    container.textContent = text;
+  }
+
+  if (!highlightCode || typeof hljs === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
 
   container.querySelectorAll('pre code').forEach((block) => {
     hljs.highlightElement(block);
@@ -33,3 +43,4 @@ export function renderMarkdownAndHighlight(text, container) {
     }
   });
 }
+
