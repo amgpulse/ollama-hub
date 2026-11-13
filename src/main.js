@@ -84,22 +84,31 @@ function updateProviderStatus(connectionProvider, status) {
   text.textContent = `${connectionProvider}: ${label}`;
 }
 
-async function checkOtherProviderStatus(currentProvider) {
-  const otherProvider = currentProvider === 'llama.cpp' ? 'ollama' : 'llama.cpp';
-  const configuredHost = otherProvider === 'llama.cpp'
+async function checkProviderStatus(connectionProvider) {
+  const configuredHost = connectionProvider === 'llama.cpp'
     ? window.__APP_CONFIG__?.llamaCppHost || 'http://127.0.0.1:8080'
     : window.__APP_CONFIG__?.ollamaHost || 'http://127.0.0.1:11434';
-  const otherHost = getSetting(`${otherProvider}_host`, configuredHost);
-  const fetchModels = otherProvider === 'llama.cpp' ? getLlamaCppModels : getModels;
+  const connectionHost = getSetting(`${connectionProvider}_host`, configuredHost);
+  const fetchModels = connectionProvider === 'llama.cpp' ? getLlamaCppModels : getModels;
 
-  updateProviderStatus(otherProvider, 'checking');
+  updateProviderStatus(connectionProvider, 'checking');
   try {
-    await fetchModels(otherHost);
-    updateProviderStatus(otherProvider, 'online');
+    await fetchModels(connectionHost);
+    updateProviderStatus(connectionProvider, 'online');
+    return true;
   } catch (error) {
-    console.error(`${otherProvider} status check failed:`, error);
-    updateProviderStatus(otherProvider, 'offline');
+    console.error(`${connectionProvider} status check failed:`, error);
+    updateProviderStatus(connectionProvider, 'offline');
+    return false;
   }
+}
+
+async function checkBothProviders() {
+  const [ollamaOnline, llamaCppOnline] = await Promise.all([
+    checkProviderStatus('ollama'),
+    checkProviderStatus('llama.cpp')
+  ]);
+  return { ollama: ollamaOnline, 'llama.cpp': llamaCppOnline };
 }
 
 async function verifyConnectionAndLoadModels(connectionProvider, connectionHost) {
@@ -146,6 +155,22 @@ async function verifyConnectionAndLoadModels(connectionProvider, connectionHost)
   }
 }
 
+async function reconnect(nextProvider, nextHost) {
+  provider = nextProvider;
+  host = nextHost;
+  activeModel = '';
+
+  const statuses = await checkBothProviders();
+  const otherProvider = nextProvider === 'llama.cpp' ? 'ollama' : 'llama.cpp';
+  if (!statuses[nextProvider] && statuses[otherProvider]) {
+    elements.providerSelect.value = otherProvider;
+    elements.providerSelect.dispatchEvent(new Event('change'));
+    return;
+  }
+
+  await verifyConnectionAndLoadModels(nextProvider, nextHost);
+}
+
 elements.modelSelect.addEventListener('change', (event) => {
   activeModel = event.target.value;
   elements.activeModelTitle.textContent = activeModel || 'No Model Selected';
@@ -160,19 +185,8 @@ document.querySelectorAll('[data-suggestion]').forEach((button) => {
 });
 
 setupSettings(elements, {
-  onReconnect: async (nextProvider, nextHost) => {
-    provider = nextProvider;
-    host = nextHost;
-    activeModel = '';
-    await Promise.all([
-      verifyConnectionAndLoadModels(nextProvider, nextHost),
-      checkOtherProviderStatus(nextProvider)
-    ]);
-  },
+  onReconnect: reconnect,
   onClearChat: chat.clearCurrentChat
 });
 
-await Promise.all([
-  verifyConnectionAndLoadModels(provider, host),
-  checkOtherProviderStatus(provider)
-]);
+await reconnect(provider, host);
