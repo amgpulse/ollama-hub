@@ -4,6 +4,7 @@ import { renderModelsDropdown } from './components/ModelSelector.js';
 import { initializeSettings, setupSettings } from './components/Settings.js';
 import { getModels } from './services/ollamaClient.js';
 import { getModels as getLlamaCppModels } from './services/llamaCppClient.js';
+import { getSetting } from './utils/storage.js';
 
 const elements = {
   sidebar: document.getElementById('sidebar'),
@@ -35,6 +36,8 @@ const elements = {
   alertCloseBtn: document.getElementById('alert-close-btn'),
   ollamaStatusDot: document.getElementById('ollama-status-dot'),
   ollamaStatusText: document.getElementById('ollama-status-text'),
+  llamaCppStatusDot: document.getElementById('llama-cpp-status-dot'),
+  llamaCppStatusText: document.getElementById('llama-cpp-status-text'),
   enableThinkingToggle: document.getElementById('enable-thinking-toggle')
 };
 
@@ -67,9 +70,40 @@ const chat = createChat({
   showAlert
 });
 
+function updateProviderStatus(connectionProvider, status) {
+  const isLlamaCpp = connectionProvider === 'llama.cpp';
+  const dot = isLlamaCpp ? elements.llamaCppStatusDot : elements.ollamaStatusDot;
+  const text = isLlamaCpp ? elements.llamaCppStatusText : elements.ollamaStatusText;
+  const statusStyles = {
+    checking: ['bg-amber-500 animate-pulse', 'Checking status...'],
+    online: ['bg-emerald-500', 'Online'],
+    offline: ['bg-rose-500', 'Offline / Connection Error']
+  };
+  const [dotStyle, label] = statusStyles[status];
+  dot.className = `inline-block w-2 h-2 rounded-full ${dotStyle}`;
+  text.textContent = `${connectionProvider}: ${label}`;
+}
+
+async function checkOtherProviderStatus(currentProvider) {
+  const otherProvider = currentProvider === 'llama.cpp' ? 'ollama' : 'llama.cpp';
+  const configuredHost = otherProvider === 'llama.cpp'
+    ? window.__APP_CONFIG__?.llamaCppHost || 'http://127.0.0.1:8080'
+    : window.__APP_CONFIG__?.ollamaHost || 'http://127.0.0.1:11434';
+  const otherHost = getSetting(`${otherProvider}_host`, configuredHost);
+  const fetchModels = otherProvider === 'llama.cpp' ? getLlamaCppModels : getModels;
+
+  updateProviderStatus(otherProvider, 'checking');
+  try {
+    await fetchModels(otherHost);
+    updateProviderStatus(otherProvider, 'online');
+  } catch (error) {
+    console.error(`${otherProvider} status check failed:`, error);
+    updateProviderStatus(otherProvider, 'offline');
+  }
+}
+
 async function verifyConnectionAndLoadModels(connectionProvider, connectionHost) {
-  elements.ollamaStatusDot.className = 'inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse';
-  elements.ollamaStatusText.textContent = 'Connecting...';
+  updateProviderStatus(connectionProvider, 'checking');
   elements.testStatusIcon.className = 'fa-solid fa-spinner animate-spin';
   elements.testConnectionBtn.disabled = true;
 
@@ -78,8 +112,7 @@ async function verifyConnectionAndLoadModels(connectionProvider, connectionHost)
     models = await fetchModels(connectionHost);
     renderModelsDropdown(models, elements.modelSelect, activeModel);
 
-    elements.ollamaStatusDot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
-    elements.ollamaStatusText.textContent = `Connected to ${connectionProvider}`;
+    updateProviderStatus(connectionProvider, 'online');
     elements.testStatusIcon.className = 'fa-solid fa-circle-check text-emerald-400';
 
     if (models.length > 0) {
@@ -99,8 +132,7 @@ async function verifyConnectionAndLoadModels(connectionProvider, connectionHost)
     }
   } catch (error) {
     console.error(`${connectionProvider} connect failed:`, error);
-    elements.ollamaStatusDot.className = 'inline-block w-2 h-2 rounded-full bg-rose-500';
-    elements.ollamaStatusText.textContent = 'Offline / Connection Error';
+    updateProviderStatus(connectionProvider, 'offline');
     elements.testStatusIcon.className = 'fa-solid fa-triangle-exclamation text-rose-400';
     elements.modelSelect.innerHTML = `<option value="">${connectionProvider} is offline</option>`;
     elements.activeModelTitle.textContent = `${connectionProvider} Unreachable`;
@@ -132,9 +164,15 @@ setupSettings(elements, {
     provider = nextProvider;
     host = nextHost;
     activeModel = '';
-    await verifyConnectionAndLoadModels(nextProvider, nextHost);
+    await Promise.all([
+      verifyConnectionAndLoadModels(nextProvider, nextHost),
+      checkOtherProviderStatus(nextProvider)
+    ]);
   },
   onClearChat: chat.clearCurrentChat
 });
 
-await verifyConnectionAndLoadModels(provider, host);
+await Promise.all([
+  verifyConnectionAndLoadModels(provider, host),
+  checkOtherProviderStatus(provider)
+]);
