@@ -20,6 +20,10 @@ export function initializeSettings(elements) {
   elements.tempInput.value = getSetting('temperature', '0.7');
   elements.tempVal.textContent = elements.tempInput.value;
 
+  if (elements.enableThinkingToggle) {
+    elements.enableThinkingToggle.checked = getSetting('enable_thinking', 'true') !== 'false';
+  }
+
   const isMobile = window.innerWidth < 768;
   elements.sidebar.classList.toggle('collapsed', isMobile);
   if (isMobile) {
@@ -71,6 +75,9 @@ export function setupSettings(elements, { onReconnect, onClearChat }) {
   elements.tempInput.addEventListener('input', (event) => {
     elements.tempVal.textContent = event.target.value;
     setSetting('temperature', event.target.value);
+  });
+  elements.enableThinkingToggle?.addEventListener('change', (event) => {
+    setSetting('enable_thinking', event.target.checked ? 'true' : 'false');
   });
 
   elements.themeToggle.addEventListener('click', () => {

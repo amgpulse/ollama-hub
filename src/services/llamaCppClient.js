@@ -23,7 +23,8 @@ export async function streamChat({
   messages,
   temperature,
   signal,
-  onToken
+  onToken,
+  onThinking
 }) {
   const response = await fetch(getApiUrl(host, 'chat/completions'), {
     method: 'POST',
@@ -64,8 +65,13 @@ export async function streamChat({
     if (!data || data === '[DONE]') return;
 
     const parsed = JSON.parse(data);
-    const content = parsed.choices?.[0]?.delta?.content;
-    if (typeof content === 'string') {
+    const delta = parsed.choices?.[0]?.delta;
+    const reasoning = delta?.reasoning_content ?? delta?.reasoning ?? delta?.thinking;
+    if (typeof reasoning === 'string' && reasoning && typeof onThinking === 'function') {
+      onThinking(reasoning);
+    }
+    const content = delta?.content;
+    if (typeof content === 'string' && typeof onToken === 'function') {
       onToken(content);
     }
     if (Number.isInteger(parsed.usage?.completion_tokens)) {

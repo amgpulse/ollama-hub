@@ -197,3 +197,52 @@ html:not(.dark) #new-chat-btn:hover {
     opacity: 0 !important;
   }
 }
+
+/* Thinking Process Component Styles */
+.thinking-block {
+  border-left: 2px solid rgba(139, 92, 246, 0.5) !important;
+}
+
+.thinking-chevron {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.thinking-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.thinking-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thinking-content::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.2);
+  border-radius: 4px;
+}
+
+.thinking-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+/* Light mode overrides for thinking process */
+html:not(.dark) .thinking-block {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+  border-color: #cbd5e1 !important;
+  border-left-color: #7c3aed !important;
+}
+
+html:not(.dark) .thinking-toggle {
+  color: #475569 !important;
+}
+
+html:not(.dark) .thinking-toggle:hover {
+  background-color: rgba(226, 232, 240, 0.7) !important;
+  color: #1e293b !important;
+}
+
+html:not(.dark) .thinking-content {
+  background-color: rgba(248, 250, 252, 0.9) !important;
+  border-top-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+

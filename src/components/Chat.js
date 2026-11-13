@@ -1,6 +1,7 @@
 import { streamChat as streamOllamaChat } from '../services/ollamaClient.js';
 import { streamChat as streamLlamaCppChat } from '../services/llamaCppClient.js';
 import { renderMarkdownAndHighlight } from '../utils/formatting.js';
+import { parseThinking } from '../utils/thinking.js';
 
 const requestFrame = typeof requestAnimationFrame === 'function'
   ? requestAnimationFrame
@@ -15,6 +16,7 @@ export function createChat({
   getHost,
   getProvider,
   getActiveModel,
+  getEnableThinking,
   showAlert
 }) {
   let messages = [];
@@ -66,10 +68,17 @@ export function createChat({
     isGenerating = true;
     elements.stopGenerationContainer.classList.remove('hidden');
     const responseElement = messageList.append('assistant', '', true);
+    const thinkingBlock = messageList.createThinkingBlock(responseElement);
     const outputMetrics = messageList.addOutputMetrics(responseElement);
 
     abortController = new AbortController();
+    let rawContent = '';
+    let rawThinking = '';
     let assistantResponse = '';
+    let assistantThinking = '';
+    let isThinking = false;
+    let thinkingStartedAt = null;
+    let thinkingDuration = null;
     let generationStartedAt = null;
 
     const currentSystemPrompt = elements.systemPromptInput.value.trim();
@@ -81,12 +90,64 @@ export function createChat({
     let renderTimer = null;
     let lastRenderTime = 0;
 
+    function updateStateFromBuffers() {
+      if (rawThinking.length > 0) {
+        assistantThinking = rawThinking;
+        const parsed = parseThinking(rawContent);
+        if (parsed.thinking) {
+          assistantThinking += '\n' + parsed.thinking;
+          assistantResponse = parsed.content;
+        } else {
+          assistantResponse = rawContent;
+        }
+        if (assistantResponse.length > 0 && isThinking) {
+          isThinking = false;
+          if (thinkingStartedAt && !thinkingDuration) {
+            thinkingDuration = (performance.now() - thinkingStartedAt) / 1000;
+          }
+        }
+      } else {
+        const parsed = parseThinking(rawContent);
+        if (parsed.thinking || parsed.isThinking) {
+          thinkingStartedAt ??= performance.now();
+          assistantThinking = parsed.thinking;
+          assistantResponse = parsed.content;
+          if (parsed.isThinking) {
+            isThinking = true;
+          } else {
+            if (isThinking || (thinkingStartedAt && !thinkingDuration)) {
+              isThinking = false;
+              thinkingDuration = (performance.now() - thinkingStartedAt) / 1000;
+            }
+          }
+        } else {
+          assistantResponse = rawContent;
+        }
+      }
+    }
+
     function renderStreamFrame(isFinal = false) {
       if (renderTimer) {
         cancelFrame(renderTimer);
         renderTimer = null;
       }
       lastRenderTime = performance.now();
+
+      updateStateFromBuffers();
+
+      if (assistantThinking) {
+        if (isThinking) {
+          const elapsed = thinkingStartedAt ? (performance.now() - thinkingStartedAt) / 1000 : null;
+          thinkingBlock.update(assistantThinking, elapsed);
+          responseElement.classList.remove('typing-cursor');
+        } else {
+          thinkingBlock.finish(thinkingDuration);
+          if (isGenerating && !isFinal) {
+            responseElement.classList.add('typing-cursor');
+          }
+        }
+      }
+
       renderMarkdownAndHighlight(assistantResponse, responseElement, {
         highlightCode: isFinal
       });
@@ -94,7 +155,8 @@ export function createChat({
       if (generationStartedAt) {
         const elapsedSeconds = (performance.now() - generationStartedAt) / 1000;
         if (elapsedSeconds > 0) {
-          const estimatedTokenCount = Math.ceil(assistantResponse.length / 4);
+          const totalChars = assistantResponse.length + assistantThinking.length;
+          const estimatedTokenCount = Math.ceil(totalChars / 4);
           messageList.updateOutputMetrics(
             outputMetrics,
             estimatedTokenCount / elapsedSeconds,
@@ -123,7 +185,7 @@ export function createChat({
         cancelFrame(renderTimer);
         renderTimer = null;
       }
-      if (assistantResponse) {
+      if (rawContent || rawThinking) {
         renderStreamFrame(isFinal);
       }
     }
@@ -137,20 +199,37 @@ export function createChat({
 
     try {
       const streamChat = getProvider() === 'llama.cpp' ? streamLlamaCppChat : streamOllamaChat;
+      const enableThinking = typeof getEnableThinking === 'function' ? getEnableThinking() : true;
       const result = await streamChat({
         host: getHost(),
         model: activeModel,
         messages: requestMessages,
         temperature: parseFloat(elements.tempInput.value),
+        think: enableThinking,
         signal: abortController.signal,
+        onThinking: (chunk) => {
+          generationStartedAt ??= performance.now();
+          thinkingStartedAt ??= performance.now();
+          isThinking = true;
+          rawThinking += chunk;
+          scheduleStreamRender();
+        },
         onToken: (token) => {
           generationStartedAt ??= performance.now();
-          assistantResponse += token;
+          rawContent += token;
           scheduleStreamRender();
         }
       });
 
       flushStreamRender(true);
+
+      if (isThinking) {
+        isThinking = false;
+        if (thinkingStartedAt && !thinkingDuration) {
+          thinkingDuration = (performance.now() - thinkingStartedAt) / 1000;
+        }
+        thinkingBlock.finish(thinkingDuration);
+      }
 
       if (Number.isInteger(result.evalCount)) {
         const tokensPerSecond = Number.isFinite(result.evalDuration) && result.evalDuration > 0
@@ -158,19 +237,37 @@ export function createChat({
           : Number.NaN;
         messageList.updateOutputMetrics(outputMetrics, tokensPerSecond, result.evalCount, false);
       }
-      messages.push({ role: 'assistant', content: assistantResponse });
-      messageList.addCopyButton(responseElement, assistantResponse);
+      const assistantMsg = { role: 'assistant', content: assistantResponse };
+      if (assistantThinking) {
+        assistantMsg.thinking = assistantThinking;
+      }
+      messages.push(assistantMsg);
+      messageList.addCopyButton(responseElement, assistantResponse, assistantThinking);
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Stream generation aborted by user.');
         flushStreamRender(true);
-        if (assistantResponse.trim()) {
-          messages.push({ role: 'assistant', content: `${assistantResponse} [Generation stopped by user]` });
-          messageList.addCopyButton(responseElement, assistantResponse);
+        if (isThinking) {
+          isThinking = false;
+          thinkingBlock.finish((performance.now() - (thinkingStartedAt || performance.now())) / 1000);
+        }
+        if (assistantResponse.trim() || assistantThinking.trim()) {
+          const stoppedMsg = {
+            role: 'assistant',
+            content: `${assistantResponse} [Generation stopped by user]`.trim()
+          };
+          if (assistantThinking) {
+            stoppedMsg.thinking = assistantThinking;
+          }
+          messages.push(stoppedMsg);
+          messageList.addCopyButton(responseElement, assistantResponse, assistantThinking);
         }
       } else {
         cancelStreamRender();
         console.error(error);
+        if (isThinking) {
+          thinkingBlock.finish();
+        }
         responseElement.textContent = `Error communicating with ${getProvider()}: ${error.message}`;
         responseElement.classList.add('text-rose-500', 'font-bold');
         messages.push({ role: 'assistant', content: `Error: ${error.message}` });

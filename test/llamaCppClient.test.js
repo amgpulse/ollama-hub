@@ -88,3 +88,42 @@ test('streamChat parses SSE tokens and sends OpenAI-compatible request fields', 
     globalThis.fetch = originalFetch;
   }
 });
+
+test('streamChat parses reasoning_content tokens from SSE chunks', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const chunks = [
+      'data: {"choices":[{"delta":{"reasoning_content":"Let\'s think"}}]}\n\n',
+      'data: {"choices":[{"delta":{"reasoning_content":" about this"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"Done."}}]}\n\n',
+      'data: [DONE]\n\n'
+    ];
+    const body = new ReadableStream({
+      start(controller) {
+        chunks.forEach((chunk) => controller.enqueue(new TextEncoder().encode(chunk)));
+        controller.close();
+      }
+    });
+    return new Response(body, {
+      headers: { 'Content-Type': 'text/event-stream' }
+    });
+  };
+
+  try {
+    const thinkingTokens = [];
+    const contentTokens = [];
+    await streamChat({
+      host: 'http://127.0.0.1:8080/v1',
+      model: 'reasoning-model',
+      messages: [{ role: 'user', content: 'Explain' }],
+      temperature: 0.2,
+      onThinking: (token) => thinkingTokens.push(token),
+      onToken: (token) => contentTokens.push(token)
+    });
+
+    assert.deepEqual(thinkingTokens, ["Let's think", ' about this']);
+    assert.deepEqual(contentTokens, ['Done.']);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

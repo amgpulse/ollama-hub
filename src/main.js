@@ -34,7 +34,8 @@ const elements = {
   alertMessage: document.getElementById('alert-message'),
   alertCloseBtn: document.getElementById('alert-close-btn'),
   ollamaStatusDot: document.getElementById('ollama-status-dot'),
-  ollamaStatusText: document.getElementById('ollama-status-text')
+  ollamaStatusText: document.getElementById('ollama-status-text'),
+  enableThinkingToggle: document.getElementById('enable-thinking-toggle')
 };
 
 const initialConnection = initializeSettings(elements);
@@ -62,6 +63,7 @@ const chat = createChat({
   getHost: () => host,
   getProvider: () => provider,
   getActiveModel: () => activeModel,
+  getEnableThinking: () => elements.enableThinkingToggle ? elements.enableThinkingToggle.checked : true,
   showAlert
 });
 

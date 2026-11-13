@@ -13,20 +13,28 @@ export async function streamChat({
   model,
   messages,
   temperature,
+  think = true,
   signal,
-  onToken
+  onToken,
+  onThinking
 }) {
+  const requestBody = {
+    model,
+    messages,
+    options: { temperature },
+    stream: true
+  };
+
+  if (typeof think === 'boolean') {
+    requestBody.think = think;
+  }
+
   const response = await fetch(`${host}/api/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      options: { temperature },
-      stream: true
-    }),
+    body: JSON.stringify(requestBody),
     signal
   });
 
@@ -49,7 +57,10 @@ export async function streamChat({
 
     try {
       const parsed = JSON.parse(line);
-      if (parsed.message?.content) {
+      if (parsed.message?.thinking && typeof onThinking === 'function') {
+        onThinking(parsed.message.thinking);
+      }
+      if (parsed.message?.content && typeof onToken === 'function') {
         onToken(parsed.message.content);
       }
       if (parsed.done && Number.isInteger(parsed.eval_count)) {
