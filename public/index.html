@@ -73,10 +73,16 @@
         </div>
         <div>
           <h1 class="font-bold text-base bg-gradient-to-r from-brand-400 to-indigo-300 bg-clip-text text-transparent">Ollama Hub</h1>
-          <span class="text-xs text-slate-400 font-medium flex items-center gap-1.5 mt-0.5">
-            <span class="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="ollama-status-dot"></span>
-            <span id="ollama-status-text">Checking status...</span>
-          </span>
+          <div class="text-xs text-slate-400 font-medium flex flex-col gap-1 mt-0.5">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="ollama-status-dot"></span>
+              <span id="ollama-status-text">Ollama: Checking status...</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="llama-cpp-status-dot"></span>
+              <span id="llama-cpp-status-text">llama.cpp: Checking status...</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>
