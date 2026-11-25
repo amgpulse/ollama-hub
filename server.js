@@ -30,6 +30,10 @@ app.disable('x-powered-by');
 // Serve static assets from public folder.
 app.use(express.static(publicDir, { index: false }));
 app.use('/src', express.static(path.join(__dirname, 'src'), { index: false }));
+app.use('/vendor/@fontsource/inter', express.static(path.join(__dirname, 'node_modules/@fontsource/inter')));
+app.use('/vendor/@fortawesome/fontawesome-free', express.static(path.join(__dirname, 'node_modules/@fortawesome/fontawesome-free')));
+app.use('/vendor/highlight.js', express.static(path.join(__dirname, 'node_modules/highlight.js')));
+app.use('/vendor/marked', express.static(path.join(__dirname, 'node_modules/marked')));
 
 app.get('/health', (_req, res) => {
   res.json({
