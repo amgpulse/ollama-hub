@@ -23,24 +23,26 @@
 
 ## ⚙️ How it works
 
-The Node.js server serves the web interface, which connects directly from your browser to the selected inference server. Ollama uses `/api/tags` and `/api/chat`; llama.cpp uses its OpenAI-compatible `/v1/models` and streaming `/v1/chat/completions` endpoints. Conversation history stays in browser memory and is not saved to disk.
+The Node.js server serves the web interface and its frontend libraries locally; the page does not load scripts, stylesheets, or fonts from external CDNs. The browser connects directly to the selected inference server. Ollama uses `/api/tags` and `/api/chat`; llama.cpp uses its OpenAI-compatible `/v1/models` and streaming `/v1/chat/completions` endpoints. Conversation history stays in browser memory and is not saved to disk.
 
 ## 🧱 Project structure
 
-The browser application is split into native JavaScript modules, served directly by Express without a separate build step:
+The browser application is split into native JavaScript modules served by Express. Tailwind CSS is compiled into a local stylesheet:
 
 ```text
 src/
 ├── components/   # Chat, settings, model selector, and message list
 ├── services/     # Ollama API client
 ├── utils/        # Formatting, validation, and browser storage helpers
-├── styles/       # Application CSS
+├── styles/       # Tailwind input and application CSS
 └── main.js       # Application entry point
 public/
-└── index.html    # Main page
+├── index.html    # Main page
+└── styles/
+    └── app.css   # Built, locally served stylesheet
 ```
 
-Express serves `public/` for the page and `/src/` for the browser modules and stylesheet.
+Express serves `public/` for the page and built assets, `/src/` for browser modules, and local frontend dependencies from `/vendor/`.
 
 ## 🧠 Supported models and runtimes
 
@@ -78,10 +80,17 @@ Set the host in the sidebar to the llama.cpp server URL (for example `http://127
 
 Make sure you have the following installed on your system:
 1. **Node.js** (v18 or higher)
-2. At least one supported runtime: Ollama running locally (`http://localhost:11434`) with a model pulled, or a llama.cpp `llama-server` running locally (`http://localhost:8080`).
-   ```bash
-   ollama pull llama3
-   ```
+2. At least one supported runtime: Ollama running locally (`http://localhost:11434`) with a model already pulled, or a llama.cpp `llama-server` running locally (`http://localhost:8080`) with a model available.
+
+For fully offline use, install the Node.js dependencies and download the model(s) you need before disconnecting from the internet. Once those are available locally, Ollama Hub and the inference runtime can run without an internet connection.
+
+> **Note:** `npm install` downloads packages from the npm registry, and pulling a model may download it from the internet. Those are setup steps; the running web interface itself uses local assets and does not require internet access.
+
+To rebuild the local stylesheet after changing Tailwind classes or styles, run:
+
+```bash
+npm run build
+```
 
 ---
 
@@ -97,6 +106,7 @@ Make sure you have the following installed on your system:
    ```bash
    npm install
    ```
+   This setup step requires access to the npm registry unless the dependencies are already available locally.
 
 3. **Create a local environment file (optional):**
    ```bash
