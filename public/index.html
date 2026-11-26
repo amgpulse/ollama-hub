@@ -13,13 +13,12 @@
   <link rel="stylesheet" href="/vendor/@fontsource/inter/800.css">
   <link rel="stylesheet" href="/vendor/@fortawesome/fontawesome-free/css/all.min.css">
   <link rel="stylesheet" href="/vendor/highlight.js/styles/tokyo-night-dark.css">
+  <script src="/vendor/highlight-browser.js"></script>
 
   <script type="module">
     import { marked } from '/vendor/marked/lib/marked.esm.js';
-    import hljs from '/vendor/highlight.js/es/common.js';
 
     window.marked = marked;
-    window.hljs = hljs;
     window.__APP_CONFIG__ = __OLLAMA_HUB_CONFIG_PLACEHOLDER__;
     await import('/src/main.js');
   </script>
