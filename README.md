@@ -137,6 +137,7 @@ npm run build
   ```
 - **Runtime override:** Choose a runtime and change its server URL directly from the sidebar configuration panel.
 - **System Instructions:** Tailor the AI's behavior instantly using the system prompt input box.
+- **Troubleshooting:** If you encounter errors while the connection is online, try turning off **Show Thinking Process** in the inference settings. Some models or runtimes may not support thinking output.
 - **Health check:** The app exposes `/health` for lightweight availability monitoring and `/api/config` to retrieve the configured runtime hosts.
 
 ---
